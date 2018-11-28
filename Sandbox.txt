@@ -1,0 +1,25 @@
+// used to calc idx and tag
+#include <iostream>
+#include <tgmath.h>
+using namespace std;
+ 
+   int main()
+   {
+      int address = 132;
+      int size = 8;
+    // get the tag
+	// (left most bits of addr after byte offset and idx used)
+	int shift = 6;
+	cout << "shift " << shift << endl;
+	int cur_tag = address >> shift;
+	cout << "tag " << cur_tag << endl;
+
+	// get the index
+	// (block addr % num of indicies)
+	int cur_addr = floor(address/size);
+	cout << "addr " << cur_addr << endl;
+	int cur_idx = cur_addr % size;
+	cout << "idx " << cur_idx << endl;
+    return 0;
+    }
+	

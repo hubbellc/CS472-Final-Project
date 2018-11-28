@@ -1,0 +1,14 @@
+L 0,8 32740 miss eviction
+L 4,8 32740 miss eviction
+L 10,6 32740 miss eviction
+L 84,8 32740 miss eviction
+L E8,5 32740 miss eviction
+L A0,2 32740 miss eviction
+L 400,8 32740 miss eviction
+L 1E,6 32740 miss eviction
+L 8C,8 32740 miss eviction
+L C1C,5 32740 miss eviction
+L B4,8 32740 miss eviction
+L 884,8 32740 miss eviction
+Hits: 0 Misses: 0 Evictions: 0
+Cycles: 156

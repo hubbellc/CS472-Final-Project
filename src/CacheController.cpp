@@ -28,21 +28,47 @@ CacheController::CacheController(ConfigInfo ci, char* tracefile) {
 	this->globalMisses = 0;
 	this->globalEvictions = 0;
 	
-	this->validBit.resize(ci.numberSets); //TODO, using provided number of sets, verify, maybe move below, to constructor??
-
-	unsigned long indexRow = (unsigned long)pow(2, numSetIndexBits);
+	validBit.resize(ci.numberSets); //TODO, using provided number of sets, verify, maybe move below, to constructor??
 
 	for (unsigned long i = 0; i < (unsigned long)ci.numberSets; i++) 
 	{ //TODO, not in simulator
-		this->validBit[i].resize(indexRow);
+		validBit[i].resize(ci.associativity);
+		fill(validBit[i].begin(), validBit[i].end(), NULL);
 	}
 
-	cache.resize((unsigned long)ci.numberSets);
+	cache.resize(ci.numberSets);
 	for (unsigned long i = 0; i < (unsigned long)ci.numberSets; i++) 
 	{
-		cache[i].resize(indexRow);
-
+		cache[i].resize(ci.associativity);
+		fill(cache[i].begin(), cache[i].end(), -1);
 	}
+	//TODO, is this the best way to solve the "tag is 0" issue?
+	
+	// to keep track of where we are
+	curWay.resize(ci.numberSets);
+	fill(curWay.begin(), curWay.end(), 0);
+	
+	// to keep track of if the way if full
+	isFull.resize(ci.numberSets);
+	fill(isFull.begin(), isFull.end(), 0);
+	
+		// make a cache
+	cout << endl << "Initial cache: " << endl;
+	cout << "Sets: " << ci.numberSets << " Rows: " << ci.associativity << endl << endl;
+	for (unsigned long i = 0; i < ci.numberSets; i++) 
+	{
+		cout << "idx: " << i << "|"; 
+		for(unsigned long j=0; j < ci.associativity; j++)
+		{
+			cout << "V: " << validBit[i][j] << "| Tag: " << cache[i][j] << "|";
+		}
+		//TODO, concerning...
+		
+		cout << endl; 
+	}
+	
+	// seed rand
+	srand (time(NULL));
 
 	// manual test code to see if the cache is behaving properly
 	// will need to be changed slightly to match the function prototype
@@ -129,6 +155,22 @@ void CacheController::runTracefile() {
 	// add the final cache statistics
 	outfile << "Hits: " << globalHits << " Misses: " << globalMisses << " Evictions: " << globalEvictions << endl;
 	outfile << "Cycles: " << globalCycles << endl;
+	
+
+	
+	// make a cache
+	cout << endl << "Final cache: " << endl;
+	cout << "Sets: " << ci.numberSets << " Rows: " << ci.associativity << endl << endl;
+	for (unsigned long i = 0; i < ci.numberSets; i++) 
+	{
+		cout << "idx: " << i << "|"; 
+		for(unsigned long j=0; j < ci.associativity; j++)
+		{
+			cout << "V: " << validBit[i][j] << "| Tag: " << cache[i][j] << "|";
+		}
+		//TODO, concerning...
+		cout << endl; 
+	}
 
 	infile.close();
 	outfile.close();
@@ -165,10 +207,9 @@ CacheController::AddressInfo CacheController::getAddressInfo(unsigned long int a
 	The read or write is indicated by isWrite.
 */
 void CacheController::cacheAccess(CacheResponse* response, bool isWrite, unsigned long int address) {
+	
 	// determine the index and tag
 	AddressInfo ai = getAddressInfo(address);
-
-	updateCycles(response, isWrite);
 
 	cout << "\tSet index: " << ai.setIndex << ", tag: " << ai.tag << endl;
 
@@ -178,9 +219,10 @@ void CacheController::cacheAccess(CacheResponse* response, bool isWrite, unsigne
 
 	// look! accessing a cache structure!
 	// see if our tag bit matches one in the cache by iterating through each option looking for a match
-	for(unsigned long i=0; i < cache.size(); i++)
+	for(unsigned long i=0; i < ci.associativity; i++)
 	{
-		if(cache[i][ai.setIndex] == ai.tag && validBit[i][ai.setIndex]==1)
+		cout << "\t\tSet index: " << ai.setIndex << ", way: " << i << ", tag: " << cache[ai.setIndex][i] << endl;
+		if(cache[ai.setIndex][i] == ai.tag && validBit[ai.setIndex][i]==1)
 		{
 			response->hit = true;
 			break;
@@ -189,22 +231,43 @@ void CacheController::cacheAccess(CacheResponse* response, bool isWrite, unsigne
 			response->hit = false;
 	}
 	
+	// init
+	response->eviction = false;
+	
 	// to keep track of the blocks in the cache (use to implement LRU)
-	map<unsigned long, bool> isFull;
+	//map<unsigned long, bool> isFull;
 	
 	if(isWrite)
 	{
 		if(!response->hit) // miss
 		{
+			cout << "\tWM on: " << ai.setIndex << endl;
 			// write miss (WM)
 			// need to write our friend out into the cache, replacing something
 			
-			// do random replacement
-			if(ci.rp == ReplacementPolicy::Random)
+						// still just filling the cache?
+			if(!isFull[ai.setIndex])
 			{
-				srand (time(NULL));
-				cache[rand() % ci.numberSets][ai.setIndex] = ai.tag;
-				validBit[rand() % ci.numberSets][ai.setIndex] = 1;
+				cache[ai.setIndex][curWay[ai.setIndex]] = ai.tag;
+				validBit[ai.setIndex][curWay[ai.setIndex]] = 1;
+				
+				if(curWay[ai.setIndex] == (ci.associativity - 1))
+					isFull[ai.setIndex] = true;
+			}
+			
+			// do random replacement
+			else if(ci.rp == ReplacementPolicy::Random)
+			{
+				long randNum = rand() % ci.associativity;
+				
+				// eviction?
+				if(cache[ai.setIndex][randNum] != -1)
+					response->eviction = true;
+				
+				cache[ai.setIndex][randNum] = ai.tag;
+				validBit[ai.setIndex][randNum] = 1;
+				
+				
 			}
 			else // LRU
 			{
@@ -223,11 +286,16 @@ void CacheController::cacheAccess(CacheResponse* response, bool isWrite, unsigne
 				// writes when replaced, extra credit
 				cout << "write back not implemented" << endl;
 			}
+			
+			// track where we are, and if we are full
+			cout << "\tCurway on: " << curWay[ai.setIndex] << " full: " << isFull[ai.setIndex] << endl;
+			curWay[ai.setIndex] = (curWay[ai.setIndex] + 1) % ci.associativity;
 		}
 		
-		else
+		else // hit
 		{
-			// write hit (WR)
+			cout << "\tWH on: " << ai.setIndex << endl;
+			// write hit (WH)
 			// if we hit on a write, nothing happens, but see if we need to write to main mem
 			if(ci.wp == WritePolicy::WriteThrough)
 			{
@@ -243,30 +311,73 @@ void CacheController::cacheAccess(CacheResponse* response, bool isWrite, unsigne
 	{
 		if(!response->hit) // miss
 		{
+			cout << "\tRM on: " << ai.setIndex << endl;
 			// read miss (RM)
 			// need to bring our friend into the cache
 			
-			// do random replacement
-			if(ci.rp == ReplacementPolicy::Random)
+			// still just filling the cache?
+			if(!isFull[ai.setIndex])
 			{
-				srand (time(NULL));
-				cache[rand() % ci.numberSets][ai.setIndex] = ai.tag;
-				validBit[rand() % ci.numberSets][ai.setIndex] = 1;
+				cache[ai.setIndex][curWay[ai.setIndex]] = ai.tag;
+				validBit[ai.setIndex][curWay[ai.setIndex]] = 1;
+				
+				if(curWay[ai.setIndex] == (ci.associativity - 1))
+					isFull[ai.setIndex] = true;
+				
+				cout << "filling" << endl;
+			}
+			
+			// do random replacement
+			else if(ci.rp == ReplacementPolicy::Random)
+			{
+				long randNum = rand() % ci.associativity;
+				
+				// eviction?
+				if(cache[ai.setIndex][randNum] != -1)
+					response->eviction = true;
+				
+				cache[ai.setIndex][randNum] = ai.tag;
+				validBit[ai.setIndex][randNum] = 1;
+				
+				
 			}
 			else // LRU
 			{
 				cout << "LRU yet to be implemented" << endl;
 			}
+			
+			// track where we are, and if we are full
+			cout << "\tCurway on: " << curWay[ai.setIndex] << " full: " << isFull[ai.setIndex] << endl;
+			curWay[ai.setIndex] = (curWay[ai.setIndex] + 1) % ci.associativity;
 		}
 		
-		// read hit (RH)
-		// if we hit on a read, nothing happens. We found it!
+		else
+		{
+			cout << "\tRH on: " << ai.setIndex << endl;
+			// read hit (RH)
+			// if we hit on a read, nothing happens. We found it!
+		}
 	}
+	
+	updateCycles(response, isWrite);
 
 	if (response->hit)
-		cout << "Address " << std::hex << address << " was a hit." << endl;
+	{
+		globalHits++;
+		cout << "Address " << address << " was a hit." << endl;
+	}
 	else
-		cout << "Address " << std::hex << address << " was a miss." << endl;
+	{
+		globalMisses++;
+		cout << "Address " << address << " was a miss." << endl;
+	}
+	if (response->eviction)
+	{
+		globalEvictions++;
+		cout << "Address " << address << " was evicted and replaced." << endl;
+		// if want hex use this: cout << "Address " << std::hex << address << " was evicted and replaced." << endl;
+	}
+	
 
 	cout << "-----------------------------------------" << endl;
 
@@ -280,15 +391,36 @@ void CacheController::cacheAccess(CacheResponse* response, bool isWrite, unsigne
 void CacheController::updateCycles(CacheResponse* response, bool isWrite) {
 	// your code should calculate the proper number of cycles
 
-	if (isWrite) //writing to cache
+	if (isWrite) //writing to cache.. TODO, fix
 	{
-		if(ci.wp == WritePolicy::WriteThrough)
-			globalCycles += (ci.cacheAccessCycles + ci.memoryAccessCycles);
-		else // write back
+		if(response->hit) // just the hit penalty
 			globalCycles += ci.cacheAccessCycles;
+		else // have to write back??
+		{
+			globalCycles += (ci.cacheAccessCycles + ci.memoryAccessCycles);
+			if(response->eviction)
+			{
+				if(ci.wp == WritePolicy::WriteThrough){} // no evection penalty for write-through
+				else // write back
+					globalCycles += ci.memoryAccessCycles;
+			}
+		}
 	}
-	else // reading from cache
-		globalCycles += ci.cacheAccessCycles;
+	else // reading
+	{
+		if(response->hit) // just the hit penalty
+			globalCycles += ci.cacheAccessCycles;
+		else // have to write back??
+		{
+			globalCycles += (ci.cacheAccessCycles + ci.memoryAccessCycles);
+			if(response->eviction)
+			{
+				if(ci.wp == WritePolicy::WriteThrough){} // no evection penalty for write-through
+				else // write back
+					globalCycles += ci.memoryAccessCycles;
+			}
+		}
+	}
 
 	// ignore response cycles, only matters in parallel comp
 }

@@ -16,7 +16,7 @@ using namespace std;
 class CacheController {
 	private:
 		struct AddressInfo {
-			unsigned long int tag;
+			long tag;
 			unsigned int setIndex;
 			unsigned long blockOffset;
 		};
@@ -31,8 +31,13 @@ class CacheController {
 
 		ConfigInfo ci;
 
-		vector<vector<unsigned long>> cache;
-		vector<vector<unsigned long>> validBit;
+		vector<vector<long>> cache;
+		vector<vector<bool>> validBit;
+		vector< long> curWay;
+		vector<bool> isFull;
+		
+		//unsigned long curWay;
+		//bool isFull;
 
 		// function to allow read or write access to the cache
 		void cacheAccess(CacheResponse*, bool, unsigned long int);

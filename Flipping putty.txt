@@ -1,0 +1,32 @@
+1) Launch Putty
+2) double click "flip"
+3) login
+4) cd "FInal Project"
+
+
+11) ctrl + O saves
+12) enter to confirm save
+13) ctrl + X to return to bash
+
+To auto make: (dont need with bash!)
+gcc -Wall matrix -o test -lm
+./test
+
+To edit:
+nano (filename)
+
+chmod +x matrix.bash
+dos2unix matrix.bash !!do before turn in!
+
+make
+
+cat -A will show tabs!!
+ctrl+D to end input!!
+if frozen, ctrl + q!!
+to kill background process: kill -SIGINT 44729 (PID)
+od -c dumps chars
+
+rm -f to ignore prompt
+rm -r to do directory
+
+./test 3013 3014 > output

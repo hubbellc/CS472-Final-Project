@@ -1,14 +1,6 @@
-L 0,8 32701 miss
-L 4,8 32701 hit
-L 10,6 32701 miss
-L 84,8 32701 miss
-L E8,5 32701 miss
-L A0,2 32701 miss
-L 400,8 32701 miss eviction
-L 1E,6 32701 miss
-L 8C,8 32701 miss
-L C1C,5 32701 miss
-L B4,8 32701 miss
-L 884,8 32701 miss eviction
-Hits: 1 Misses: 11 Evictions: 2
-Cycles: 2686
+S 04222cac,1 1428 miss
+L 04222caf,8 26 hit
+L 1ffefffd78,8 1428 miss
+M 04222ca8,4 1454 hit hit
+Hits: 3 Misses: 2 Evictions: 0
+Cycles: 4336

@@ -233,19 +233,17 @@ void CacheController::cacheAccess(CacheResponse* response, bool isWrite, unsigne
 	
 	// init
 	response->eviction = false;
-	
-	// to keep track of the blocks in the cache (use to implement LRU)
-	//map<unsigned long, bool> isFull;
-	
-	if(isWrite)
+
+	if(isWrite) // also called store, basically, coming back from CPU
 	{
+		// send it to the cache!
 		if(!response->hit) // miss
 		{
 			cout << "\tWM on: " << ai.setIndex << endl;
 			// write miss (WM)
-			// need to write our friend out into the cache, replacing something
+			// need to write our friend into the cache, replacing something
 			
-						// still just filling the cache?
+			// still just filling the cache?
 			if(!isFull[ai.setIndex])
 			{
 				cache[ai.setIndex][curWay[ai.setIndex]] = ai.tag;
@@ -302,6 +300,11 @@ void CacheController::cacheAccess(CacheResponse* response, bool isWrite, unsigne
 				// always writes back to main memory!!
 				cout << "write through" << endl;
 				//TODO, counter 
+			}
+			else
+			{
+				// writes when replaced, extra credit
+				cout << "write back not implemented" << endl;
 			}
 		}
 		
@@ -390,37 +393,31 @@ void CacheController::cacheAccess(CacheResponse* response, bool isWrite, unsigne
 */
 void CacheController::updateCycles(CacheResponse* response, bool isWrite) {
 	// your code should calculate the proper number of cycles
-
-	if (isWrite) //writing to cache.. TODO, fix
+	// init!
+	response->cycles = 0;
+	
+	if(response->hit) // just the cache access
 	{
-		if(response->hit) // just the hit penalty
-			globalCycles += ci.cacheAccessCycles;
-		else // have to write back??
-		{
-			globalCycles += (ci.cacheAccessCycles + ci.memoryAccessCycles);
-			if(response->eviction)
-			{
-				if(ci.wp == WritePolicy::WriteThrough){} // no evection penalty for write-through
-				else // write back
-					globalCycles += ci.memoryAccessCycles;
-			}
-		}
+		response->cycles += ci.cacheAccessCycles;
+		
+		//writing back?
+		if(isWrite && ci.wp == WritePolicy::WriteThrough)
+			response->cycles += ci.memoryAccessCycles;
 	}
-	else // reading
+	else // miss... has to read from mem
 	{
-		if(response->hit) // just the hit penalty
-			globalCycles += ci.cacheAccessCycles;
-		else // have to write back??
+		response->cycles += (ci.cacheAccessCycles + ci.memoryAccessCycles);
+		// no evection penalty for write-through
+		
+		// for extra cred
+		/*if(response->eviction)
 		{
-			globalCycles += (ci.cacheAccessCycles + ci.memoryAccessCycles);
-			if(response->eviction)
-			{
-				if(ci.wp == WritePolicy::WriteThrough){} // no evection penalty for write-through
-				else // write back
-					globalCycles += ci.memoryAccessCycles;
-			}
-		}
+			if(ci.wp == WritePolicy::WriteThrough){} // no evection penalty for write-through
+			else // write back
+				globalCycles += ci.memoryAccessCycles;
+		}*/
 	}
-
-	// ignore response cycles, only matters in parallel comp
+	
+	// keep track of global cycles too
+	globalCycles += response->cycles;
 }

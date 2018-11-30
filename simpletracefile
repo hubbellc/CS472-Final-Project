@@ -1,13 +1,12 @@
-==This is a simple tracefile modeling HW 3
- L 0,8
- L 4,8
- L 10,6
- L 84,8
- L E8,5
- L A0,2
- L 400,8
- L 1E,6
- L 8C,8
- L C1C,5
- L B4,8
- L 884,8
+==This is a comment and can safely be ignored.
+==An example snippet of a Valgrind trace file
+I  04010173,3
+I  04010176,6
+ S 04222cac,1
+I  0401017c,7
+ L 04222caf,8
+I  04010186,6
+I  040101fd,7
+ L 1ffefffd78,8
+ M 04222ca8,4
+I  04010204,4

@@ -1,5 +1,7 @@
 # Script adapted from https://hiltmon.com/blog/2013/07/03/a-simple-c-plus-plus-project-structure/
 CC := g++
+# use below when on flip
+# CC := /nfs/farm/classes/eecs/fall2018/cs472/public/gcc/bin/g++
 SRCDIR := src
 BUILDDIR := build
 TARGET := cache_sim
@@ -11,7 +13,7 @@ OBJECTS := $(patsubst $(SRCDIR)/%,$(BUILDDIR)/%,$(SOURCES:.$(SRCEXT)=.o))
 CFLAGS := -g -Wall
 LDFLAGS := -Wl,-rpath,/usr/local/classes/eecs/fall2018/cs472/public/gcc/lib64
 #LIB := -pthread -lmongoclient -L lib -lboost_thread-mt -lboost_filesystem-mt -lboost_system-mt
-LIB := -pthread
+#LIB := 
 INC := -I $(SRCDIR)
 
 $(TARGET): $(OBJECTS)

@@ -1,0 +1,14 @@
+L 0,8 243 miss
+L 4,8 13 hit
+L 10,6 243 miss
+L 84,8 243 miss
+L E8,5 243 miss
+L A0,2 243 miss
+L 400,8 243 miss eviction
+L 1E,6 243 miss
+L 8C,8 243 miss
+L C1C,5 243 miss
+L B4,8 243 miss
+L 884,8 243 miss eviction
+Hits: 1 Misses: 11 Evictions: 2
+Cycles: 2686

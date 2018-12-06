@@ -10,15 +10,16 @@
 #include "CacheStuff.h"
 #include <string>
 #include <vector>
+#include <list>
 
 using namespace std;
 
 class CacheController {
 	private:
 		struct AddressInfo {
-			long tag;
+			long tag; // tag initalized to -1, so it must be an unsigned long
 			unsigned int setIndex;
-			unsigned long blockOffset;
+			long blockOffset; // represents way
 		};
 		unsigned int numByteOffsetBits;
 		unsigned int numSetIndexBits;
@@ -33,11 +34,8 @@ class CacheController {
 
 		vector<vector<long>> cache;
 		vector<vector<bool>> validBit;
-		vector< long> curWay;
-		vector<bool> isFull;
-		
-		//unsigned long curWay;
-		//bool isFull;
+		vector<list<long>> LRU_keeper; 
+		vector<bool> isFull;		
 
 		// function to allow read or write access to the cache
 		void cacheAccess(CacheResponse*, bool, unsigned long int);

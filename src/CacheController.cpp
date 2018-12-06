@@ -2,6 +2,13 @@
 	Cache Simulator Implementation by Justin Goins
 	Oregon State University
 	Fall Term 2018
+	
+	Modified by Caleb Hubbell
+	
+	Sources referenced:
+	https://www.geeksforgeeks.org/lru-cache-implementation/
+	http://www.cs.cornell.edu/courses/cs3410/2013sp/lecture/18-caches3-w.pdf
+	https://en.wikipedia.org/wiki/CPU_cache
 */
 
 #include "CacheController.h"
@@ -45,17 +52,16 @@ CacheController::CacheController(ConfigInfo ci, char* tracefile) {
 	//TODO, is this the best way to solve the "tag is 0" issue?
 	
 	// to keep track of where we are
-	curWay.resize(ci.numberSets);
-	fill(curWay.begin(), curWay.end(), 0);
+	LRU_keeper.resize(ci.numberSets);
 	
 	// to keep track of if the way if full
 	isFull.resize(ci.numberSets);
 	fill(isFull.begin(), isFull.end(), 0);
 	
-		// make a cache
+	// make a cache
 	cout << endl << "Initial cache: " << endl;
 	cout << "Sets: " << ci.numberSets << " Rows: " << ci.associativity << endl << endl;
-	for (unsigned long i = 0; i < ci.numberSets; i++) 
+	/*for (unsigned long i = 0; i < ci.numberSets; i++) 
 	{
 		cout << "idx: " << i << "|"; 
 		for(unsigned long j=0; j < ci.associativity; j++)
@@ -65,7 +71,7 @@ CacheController::CacheController(ConfigInfo ci, char* tracefile) {
 		//TODO, concerning...
 		
 		cout << endl; 
-	}
+	}*/
 	
 	// seed rand
 	srand (time(NULL));
@@ -156,10 +162,8 @@ void CacheController::runTracefile() {
 	outfile << "Hits: " << globalHits << " Misses: " << globalMisses << " Evictions: " << globalEvictions << endl;
 	outfile << "Cycles: " << globalCycles << endl;
 	
-
-	
 	// make a cache
-	cout << endl << "Final cache: " << endl;
+	/*cout << endl << "Final cache: " << endl;
 	cout << "Sets: " << ci.numberSets << " Rows: " << ci.associativity << endl << endl;
 	for (unsigned long i = 0; i < ci.numberSets; i++) 
 	{
@@ -168,9 +172,8 @@ void CacheController::runTracefile() {
 		{
 			cout << "V: " << validBit[i][j] << "| Tag: " << cache[i][j] << "|";
 		}
-		//TODO, concerning...
 		cout << endl; 
-	}
+	}*/
 
 	infile.close();
 	outfile.close();
@@ -180,7 +183,6 @@ void CacheController::runTracefile() {
 	Calculate the block index and tag for a specified address.
 */
 CacheController::AddressInfo CacheController::getAddressInfo(unsigned long int address) {
-	//TODO, have TA look, I think it is good!
 	// address is the byte address!
 	AddressInfo ai;
 
@@ -219,7 +221,22 @@ void CacheController::cacheAccess(CacheResponse* response, bool isWrite, unsigne
 
 	// look! accessing a cache structure!
 	// see if our tag bit matches one in the cache by iterating through each option looking for a match
-	for(unsigned long i=0; i < ci.associativity; i++)
+	/*for(unsigned long i=0; i < ci.associativity; i++)
+	{
+		cout << "\t\tSet index: " << ai.setIndex << ", way: " << i << ", tag: " << cache[ai.setIndex][i] << endl;
+		if(cache[ai.setIndex][i] == ai.tag && validBit[ai.setIndex][i]==1)
+		{
+			response->hit = true;
+			ai.blockOffset = i;
+			break;
+		}
+		else
+			response->hit = false;
+	}*/
+	unsigned long i=0;
+	response->hit = false;
+	// use a while loop to only go while our way exists
+	while((cache[ai.setIndex][i] != -1) && i < ci.associativity)
 	{
 		cout << "\t\tSet index: " << ai.setIndex << ", way: " << i << ", tag: " << cache[ai.setIndex][i] << endl;
 		if(cache[ai.setIndex][i] == ai.tag && validBit[ai.setIndex][i]==1)
@@ -227,140 +244,101 @@ void CacheController::cacheAccess(CacheResponse* response, bool isWrite, unsigne
 			response->hit = true;
 			break;
 		}
-		else
-			response->hit = false;
+		i++;
 	}
+	
+	ai.blockOffset = i - 1;
 	
 	// init
 	response->eviction = false;
 
-	if(isWrite) // also called store, basically, coming back from CPU
+	if(!response->hit) // miss
 	{
-		// send it to the cache!
-		if(!response->hit) // miss
-		{
-			cout << "\tWM on: " << ai.setIndex << endl;
-			// write miss (WM)
-			// need to write our friend into the cache, replacing something
-			
-			// still just filling the cache?
-			if(!isFull[ai.setIndex])
-			{
-				cache[ai.setIndex][curWay[ai.setIndex]] = ai.tag;
-				validBit[ai.setIndex][curWay[ai.setIndex]] = 1;
-				
-				if(curWay[ai.setIndex] == (ci.associativity - 1))
-					isFull[ai.setIndex] = true;
-			}
-			
-			// do random replacement
-			else if(ci.rp == ReplacementPolicy::Random)
-			{
-				long randNum = rand() % ci.associativity;
-				
-				// eviction?
-				if(cache[ai.setIndex][randNum] != -1)
-					response->eviction = true;
-				
-				cache[ai.setIndex][randNum] = ai.tag;
-				validBit[ai.setIndex][randNum] = 1;
-				
-				
-			}
-			else // LRU
-			{
-				cout << "LRU yet to be implemented" << endl;
-			}
-			
-			// block has been evicted, see what to do
-			if(ci.wp == WritePolicy::WriteThrough)
-			{
-				// always writes back to main memory!!
-				cout << "write through" << endl;
-				//TODO, counter 
-			}
-			else
-			{
-				// writes when replaced, extra credit
-				cout << "write back not implemented" << endl;
-			}
-			
-			// track where we are, and if we are full
-			cout << "\tCurway on: " << curWay[ai.setIndex] << " full: " << isFull[ai.setIndex] << endl;
-			curWay[ai.setIndex] = (curWay[ai.setIndex] + 1) % ci.associativity;
-		}
+		// need to write our friend into the cache, replacing something?
 		
-		else // hit
+		// not full yet? just add that baby in there
+		if(!isFull[ai.setIndex])
 		{
-			cout << "\tWH on: " << ai.setIndex << endl;
-			// write hit (WH)
-			// if we hit on a write, nothing happens, but see if we need to write to main mem
-			if(ci.wp == WritePolicy::WriteThrough)
-			{
-				// always writes back to main memory!!
-				cout << "write through" << endl;
-				//TODO, counter 
-			}
-			else
-			{
-				// writes when replaced, extra credit
-				cout << "write back not implemented" << endl;
-			}
-		}
-		
-	}
-	
-	else // read
-	{
-		if(!response->hit) // miss
+			cache[ai.setIndex][i] = ai.tag;
+			validBit[ai.setIndex][i] = 1;
+			
+			cout << "not full" << endl;
+		}		
+		// do random replacement if our way is full
+		else if(ci.rp == ReplacementPolicy::Random)
 		{
-			cout << "\tRM on: " << ai.setIndex << endl;
-			// read miss (RM)
-			// need to bring our friend into the cache
-			
-			// still just filling the cache?
-			if(!isFull[ai.setIndex])
-			{
-				cache[ai.setIndex][curWay[ai.setIndex]] = ai.tag;
-				validBit[ai.setIndex][curWay[ai.setIndex]] = 1;
-				
-				if(curWay[ai.setIndex] == (ci.associativity - 1))
-					isFull[ai.setIndex] = true;
-				
-				cout << "filling" << endl;
-			}
-			
-			// do random replacement
-			else if(ci.rp == ReplacementPolicy::Random)
-			{
-				long randNum = rand() % ci.associativity;
-				
-				// eviction?
-				if(cache[ai.setIndex][randNum] != -1)
-					response->eviction = true;
-				
-				cache[ai.setIndex][randNum] = ai.tag;
-				validBit[ai.setIndex][randNum] = 1;
-				
-				
-			}
-			else // LRU
-			{
-				cout << "LRU yet to be implemented" << endl;
-			}
-			
-			// track where we are, and if we are full
-			cout << "\tCurway on: " << curWay[ai.setIndex] << " full: " << isFull[ai.setIndex] << endl;
-			curWay[ai.setIndex] = (curWay[ai.setIndex] + 1) % ci.associativity;
+			// get a random number
+			long randNum = rand() % ci.associativity;
+
+			// replace that way
+			cache[ai.setIndex][randNum] = ai.tag;
+			validBit[ai.setIndex][randNum] = 1;
+			response->eviction = true;
 		}
-		
+		// do LRU replacement if our cache way is full
 		else
 		{
-			cout << "\tRH on: " << ai.setIndex << endl;
-			// read hit (RH)
-			// if we hit on a read, nothing happens. We found it!
+			cout << "in LRU replace" << " LRU: " << LRU_keeper[ai.setIndex].back() << endl;
+			
+			// replace the LRU way
+			cache[ai.setIndex][LRU_keeper[ai.setIndex].back()] = ai.tag;
+			validBit[ai.setIndex][LRU_keeper[ai.setIndex].back()] = 1;
+			response->eviction = true;
 		}
+		
+		// block has been evicted, see what to do
+		if(isWrite && ci.wp == WritePolicy::WriteThrough)
+		{
+			// always writes back to main memory!!
+			cout << "write through" << endl;
+			//TODO, counter??
+		}
+		else
+		{
+			// writes when replaced, extra credit
+			//cout << "write back not implemented" << endl;
+		}
+		
+		// stats for nerds
+		cout << "\t On: " << i << " full: " << isFull[ai.setIndex] << " size: " << LRU_keeper[ai.setIndex].size() << endl;
 	}
+	
+	else // hit
+	{
+		// if we hit on a write, nothing happens, but see if we need to write to main mem
+		if(ci.wp == WritePolicy::WriteThrough)
+		{
+			// always writes back to main memory!!
+			cout << "write through" << endl;
+		}
+		else
+		{
+			// writes when replaced, extra credit
+			cout << "write back not implemented" << endl;
+		}
+		
+		// if we hit on a read, nothing happens. We found it!
+		
+		// detach from where it is, so we can add it back to the beginning
+		// TODO, right? seems like we would just want to pop the back again
+		LRU_keeper[ai.setIndex].remove(ai.blockOffset);
+	}
+	
+	// always push the most recently used to the LRU_keeper
+	cout << "Pushing: " << ai.blockOffset << endl;
+	LRU_keeper[ai.setIndex].push_front(ai.blockOffset);
+	
+	// once we are full, keep track of the LRU
+	if(LRU_keeper[ai.setIndex].size() == ci.associativity) // -1 because we check before it is actually added
+	{ 
+		cout << "full" << endl;
+		isFull[ai.setIndex] = true;
+		
+		//delete the least recently used element 
+		LRU_keeper[ai.setIndex].pop_back(); 
+	}
+	else
+		cout << "not full" << endl;
 	
 	updateCycles(response, isWrite);
 
